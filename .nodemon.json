@@ -1,0 +1,9 @@
+{
+  "ignore": [
+    "**/dist/**",
+    "**/output/**"
+  ],
+  "ext": "js, purs",
+  "quiet": true,
+  "exec": "sh ./run.sh"
+}

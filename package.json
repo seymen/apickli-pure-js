@@ -1,0 +1,11 @@
+{
+  "name": "apickli-pure",
+  "version": "1.0.0",
+  "scripts": {
+    "start": "nodemon --config .nodemon.json"
+  },
+  "dependencies": {
+    "crocks": "^0.12.4",
+    "xhr2": "^0.2.0"
+  }
+}
