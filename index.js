@@ -1,23 +1,20 @@
-const { requestContext, setUri } = require('./pure/dist/pure')
+const { get, requestContext, setUri } = require('./pure/dist/apickli')
 
-const req = {
-  url: 'https://httpbin.org/get'
+const ctx = {
+  baseUri: 'https://httpbin.org/get'
 }
 
-// const reqCtx = requestContext({})(req)
+const req = {
+  url: '/get'
+}
 
-// const a =
-//   get(reqCtx)
-//   .then(
-//     a => console.log('then --> ', a),
-//     a => console.log('catch -->', a)
-//   )
+const debug = s => {
+  console.log(s)
+  return s
+}
 
-const inc = a => a + 1
-
-Promise.resolve(requestContext({})(req))
+Promise.resolve(requestContext(ctx)(req))
 .then(setUri("!"))
-.then(console.log)
-
-// console.log(reqCtx2.data)
-
+.then(debug)
+.then(get)
+.then(debug)

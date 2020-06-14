@@ -1,4 +1,4 @@
-module Pure
+module Apickli
   ( requestContext
   , Contextual
   , setUri
@@ -10,15 +10,14 @@ import Prelude
 
 import Affjax as A
 import Data.Either (Either(..))
-import Data.Argonaut.Core (Json)
 import Control.Promise (Promise, fromAff)
+import Control.Extend (class Extend, extend)
 import Effect (Effect)
 import Effect.Aff.Compat (mkEffectFn1)
 import Effect.Uncurried (EffectFn1)
 import Effect.Exception (error)
 import Control.Monad.Except (throwError)
 import Record as Record
-import Data.Tuple
 
 type Context =
   { templateChar :: Char
@@ -28,20 +27,19 @@ type Context =
 defaultContext :: Context
 defaultContext = { templateChar: '`', baseUri: "" }
 
-newtype Contextual a b = Contextual { ctx :: a, data :: b }
+newtype Contextual a = Contextual { ctx :: Context, data :: a }
 
-{-- instance showContextual :: (Show a, Show b) => Show (Contextual a b) where --}
-{--   show (Contextual a b) = "Contextual " <> (show a) <> " " (show b) --}
+instance showContextual :: (Show a) => Show (Contextual a) where
+  show (Contextual a) = "Contextual " <> (show a)
 
-derive instance functorContextual :: Functor (Contextual a)
+derive instance functorContextual :: Functor (Contextual)
 
-{-- instance functorContextual :: Functor Contextual where --}
-  {-- map f (Contextual o) = Contextual { ctx: o.ctx, data1: (f o) } --}
-  {-- map f (Contextual o) = Contextual $ o { data1 = (f o.data1) } --}
+instance extendContextual :: Extend (Contextual) where
+  extend f c@(Contextual a) = Contextual $ a { data = (f c) }
 
 type Request = A.Request Unit
 type Response = A.Response Unit
-type RequestContext = Contextual Context Request
+type RequestContext = Contextual Request
 
 requestContext :: Context -> Request -> RequestContext
 requestContext ctx req = Contextual { ctx: mergedCtx, data: mergedReq }
@@ -49,10 +47,7 @@ requestContext ctx req = Contextual { ctx: mergedCtx, data: mergedReq }
         mergedReq = Record.merge req A.defaultRequest
 
 setUri :: A.URL -> RequestContext -> RequestContext
-setUri uri = map (\req -> req { url = "boo" })
-
-foo :: Request -> Request
-foo req = req { url = "boo" }
+setUri uri = extend (\(Contextual c) -> c.data { url = c.ctx.baseUri })
 
 get' :: RequestContext -> Effect (Promise Response)
 get' (Contextual c) = fromAff $ do
@@ -63,6 +58,3 @@ get' (Contextual c) = fromAff $ do
 
 get :: EffectFn1 RequestContext (Promise Response)
 get = mkEffectFn1 get'
-
-exclaim :: String -> String
-exclaim s = s <> "!"
