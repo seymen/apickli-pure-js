@@ -1,6 +1,7 @@
 module Apickli
   ( requestContext
-  , Contextual
+  , ContextWith
+  , RequestContextWrapper
   , setUri
   , get
   )
@@ -27,30 +28,45 @@ type Context =
 defaultContext :: Context
 defaultContext = { templateChar: '`', baseUri: "" }
 
-newtype Contextual a = Contextual { ctx :: Context, data :: a }
+newtype ContextWith a = ContextWith { ctx :: Context, data :: a }
 
-instance showContextual :: (Show a) => Show (Contextual a) where
-  show (Contextual a) = "Contextual " <> (show a)
+instance showContextWith :: (Show a) => Show (ContextWith a) where
+  show (ContextWith a) = "ContextWith " <> (show a)
 
-derive instance functorContextual :: Functor (Contextual)
+{-- derive instance functorContextWith :: Functor (ContextWith) --}
+instance functorContextWith :: Functor ContextWith where
+  map f (ContextWith a) = ContextWith $ a { data = f a.data }
 
-instance extendContextual :: Extend (Contextual) where
-  extend f c@(Contextual a) = Contextual $ a { data = (f c) }
+instance extendContextWith :: Extend (ContextWith) where
+  extend f c@(ContextWith a) = ContextWith $ a { data = (f c) }
 
 type Request = A.Request Unit
 type Response = A.Response Unit
-type RequestContext = Contextual Request
+type RequestContext = ContextWith Request
+newtype RequestContextWrapper = RequestContextWrapper
+  { requestContext :: RequestContext
+  , map :: (Request -> Request) -> RequestContextWrapper
+  }
 
-requestContext :: Context -> Request -> RequestContext
-requestContext ctx req = Contextual { ctx: mergedCtx, data: mergedReq }
+wrapToJS :: RequestContext -> RequestContextWrapper
+wrapToJS reqCtx = RequestContextWrapper
+  { requestContext: reqCtx
+  , map: (\f -> wrapToJS $ map f reqCtx)
+  }
+
+requestContext :: Context -> Request -> RequestContextWrapper
+requestContext ctx req = wrapToJS $ ContextWith { ctx: mergedCtx, data: mergedReq }
   where mergedCtx = Record.merge ctx defaultContext
         mergedReq = Record.merge req A.defaultRequest
 
-setUri :: A.URL -> RequestContext -> RequestContext
-setUri uri = extend (\(Contextual c) -> c.data { url = c.ctx.baseUri })
+setUri :: A.URL -> Request -> Request
+setUri url r = r { url = url }
+
+{-- setUri :: A.URL -> RequestContext -> RequestContext --}
+{-- setUri uri = extend (\(ContextWith c) -> c.data { url = c.ctx.baseUri }) --}
 
 get' :: RequestContext -> Effect (Promise Response)
-get' (Contextual c) = fromAff $ do
+get' (ContextWith c) = fromAff $ do
   result <- A.request $ c.data
   case result of
     Left err -> throwError $ error $ A.printError err

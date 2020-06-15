@@ -13,8 +13,15 @@ const debug = s => {
   return s
 }
 
-Promise.resolve(requestContext(ctx)(req))
-.then(setUri("!"))
-.then(debug)
-.then(get)
-.then(debug)
+// Promise.resolve(requestContext(ctx)(req))
+// .then(debug)
+// .then(setUri("!"))
+// .then(debug)
+// .then(get)
+// .then(debug)
+
+console.log(
+  requestContext(ctx)(req)
+  .map(r => { r.url = 'doo'; return r })
+  .map(setUri('fgfgdf'))
+)
