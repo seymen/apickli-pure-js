@@ -13,6 +13,12 @@ const debug = s => {
   return s
 }
 
+const boo = reqCtx => {
+  console.log(reqCtx)
+  reqCtx.data.url += "?a=a"
+  return reqCtx.data
+}
+
 // Promise.resolve(requestContext(ctx)(req))
 // .then(debug)
 // .then(setUri("!"))
@@ -20,8 +26,9 @@ const debug = s => {
 // .then(get)
 // .then(debug)
 
-console.log(
-  requestContext(ctx)(req)
-  .map(r => { r.url = 'doo'; return r })
-  .map(setUri('fgfgdf'))
-)
+const p = requestContext(ctx)(req)
+  .extend(setUri('https://httpbin.org/get'))
+  .extend(boo)
+  .map(debug)
+  // .extend(get)
+

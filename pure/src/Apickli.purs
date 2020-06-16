@@ -46,12 +46,14 @@ type RequestContext = ContextWith Request
 newtype RequestContextWrapper = RequestContextWrapper
   { requestContext :: RequestContext
   , map :: (Request -> Request) -> RequestContextWrapper
+  , extend :: (RequestContext -> Request) -> RequestContextWrapper
   }
 
 wrapToJS :: RequestContext -> RequestContextWrapper
-wrapToJS reqCtx = RequestContextWrapper
-  { requestContext: reqCtx
-  , map: (\f -> wrapToJS $ map f reqCtx)
+wrapToJS t@(ContextWith o) = RequestContextWrapper
+  { requestContext: t
+  , map: (\f -> wrapToJS $ map f t)
+  , extend: (\f -> wrapToJS $ extend f t)
   }
 
 requestContext :: Context -> Request -> RequestContextWrapper
@@ -59,15 +61,12 @@ requestContext ctx req = wrapToJS $ ContextWith { ctx: mergedCtx, data: mergedRe
   where mergedCtx = Record.merge ctx defaultContext
         mergedReq = Record.merge req A.defaultRequest
 
-setUri :: A.URL -> Request -> Request
-setUri url r = r { url = url }
-
-{-- setUri :: A.URL -> RequestContext -> RequestContext --}
-{-- setUri uri = extend (\(ContextWith c) -> c.data { url = c.ctx.baseUri }) --}
+setUri :: A.URL -> RequestContext -> Request
+setUri url (ContextWith o) = o.data { url = url }
 
 get' :: RequestContext -> Effect (Promise Response)
-get' (ContextWith c) = fromAff $ do
-  result <- A.request $ c.data
+get' (ContextWith req) = fromAff $ do
+  result <- A.request $ req.data
   case result of
     Left err -> throwError $ error $ A.printError err
     Right res -> pure res
