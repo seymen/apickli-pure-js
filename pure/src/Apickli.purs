@@ -33,7 +33,6 @@ newtype ContextWith a = ContextWith { ctx :: Context, data :: a }
 instance showContextWith :: (Show a) => Show (ContextWith a) where
   show (ContextWith a) = "ContextWith " <> (show a)
 
-{-- derive instance functorContextWith :: Functor (ContextWith) --}
 instance functorContextWith :: Functor ContextWith where
   map f (ContextWith a) = ContextWith $ a { data = f a.data }
 
@@ -43,6 +42,7 @@ instance extendContextWith :: Extend (ContextWith) where
 type Request = A.Request Unit
 type Response = A.Response Unit
 type RequestContext = ContextWith Request
+
 newtype RequestContextWrapper = RequestContextWrapper
   { requestContext :: RequestContext
   , map :: (Request -> Request) -> RequestContextWrapper
