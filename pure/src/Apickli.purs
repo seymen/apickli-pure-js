@@ -1,7 +1,6 @@
 module Apickli
-  ( requestContext
+  ( makeRequestContext
   , ContextWith
-  , RequestContextWrapper
   , setUri
   , get
   )
@@ -12,14 +11,13 @@ import Prelude
 import Affjax as A
 import Data.Either (Either(..))
 import Control.Promise (Promise, fromAff)
-import Control.Extend (class Extend, extend)
+import Control.Extend (class Extend)
 import Effect (Effect)
 import Effect.Aff.Compat (mkEffectFn1)
 import Effect.Uncurried (EffectFn1)
 import Effect.Exception (error)
-import Control.Monad.Except (throwError)
 import Record as Record
-import Effect.Aff
+import Effect.Aff (throwError)
 
 type Context =
   { templateChar :: Char
@@ -29,40 +27,38 @@ type Context =
 defaultContext :: Context
 defaultContext = { templateChar: '`', baseUri: "" }
 
-newtype ContextWith a = ContextWith { context :: Context, data :: a }
+newtype ContextWith a = ContextWith
+  { context :: Context
+  , data :: a
+  , map :: (a -> a) -> ContextWith a
+  , extend :: (ContextWith a -> a) -> ContextWith a
+  }
+
+instance functorContextWith :: Functor (ContextWith) where
+  map f (ContextWith a) = makeContextWith a.context (f a.data)
 
 instance showContextWith :: (Show a) => Show (ContextWith a) where
-  show (ContextWith a) = "ContextWith " <> (show a)
-
-instance functorContextWith :: Functor ContextWith where
-  map f (ContextWith a) = ContextWith $ a { data = f a.data }
+  show (ContextWith a) =
+    "ContextWith (" <> show a.context <> "," <> show a.data <> ")"
 
 instance extendContextWith :: Extend (ContextWith) where
-  extend f c@(ContextWith a) = ContextWith $ a { data = (f c) }
+  extend f c@(ContextWith a) = makeContextWith a.context $ f c
 
 type Request = A.Request Unit
 type Response = A.Response Unit
 type RequestContext = ContextWith Request
 
-newtype RequestContextWrapper = RequestContextWrapper
+makeContextWith :: forall a. Context -> a -> ContextWith a
+makeContextWith c x = ContextWith
   {
-    context :: Context
-  , data :: Request
-  , map :: (Request -> Request) -> RequestContextWrapper
-  , extend :: (RequestContext -> Request) -> RequestContextWrapper
+    context: c
+  , data: x
+  , map: (\f -> makeContextWith c (f x))
+  , extend: (\f -> makeContextWith c $ f (makeContextWith c x))
   }
 
-wrapToJS :: RequestContext -> RequestContextWrapper
-wrapToJS t@(ContextWith o) = RequestContextWrapper
-  {
-    context: o.context
-  , data: o.data
-  , map: (\f -> wrapToJS $ map f t)
-  , extend: (\f -> wrapToJS $ extend f t)
-  }
-
-requestContext :: Context -> Request -> RequestContextWrapper
-requestContext c r = wrapToJS $ ContextWith { context: mergedCtx, data: mergedReq }
+makeRequestContext :: Context -> Request -> RequestContext
+makeRequestContext c r = makeContextWith mergedCtx mergedReq
   where mergedCtx = Record.merge c defaultContext
         mergedReq = Record.merge r A.defaultRequest
 

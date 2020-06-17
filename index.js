@@ -1,4 +1,4 @@
-const { get, requestContext, setUri } = require('./pure/dist/apickli')
+const { get, makeRequestContext, setUri } = require('./pure/dist/apickli')
 
 const ctx = {
   baseUri: 'https://httpbin.org/get'
@@ -26,7 +26,7 @@ const extend = reqCtx => {
 // .then(get)
 // .then(debug)
 
-const p = requestContext(ctx)(req)
+const p = makeRequestContext(ctx)(req)
   .extend(setUri('https://httpbin.org/get'))
   .extend(extend)
   .map(debug)
