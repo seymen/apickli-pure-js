@@ -19,6 +19,7 @@ import Effect.Uncurried (EffectFn1)
 import Effect.Exception (error)
 import Control.Monad.Except (throwError)
 import Record as Record
+import Effect.Aff
 
 type Context =
   { templateChar :: Char
@@ -28,7 +29,7 @@ type Context =
 defaultContext :: Context
 defaultContext = { templateChar: '`', baseUri: "" }
 
-newtype ContextWith a = ContextWith { ctx :: Context, data :: a }
+newtype ContextWith a = ContextWith { context :: Context, data :: a }
 
 instance showContextWith :: (Show a) => Show (ContextWith a) where
   show (ContextWith a) = "ContextWith " <> (show a)
@@ -44,29 +45,33 @@ type Response = A.Response Unit
 type RequestContext = ContextWith Request
 
 newtype RequestContextWrapper = RequestContextWrapper
-  { requestContext :: RequestContext
+  {
+    context :: Context
+  , data :: Request
   , map :: (Request -> Request) -> RequestContextWrapper
   , extend :: (RequestContext -> Request) -> RequestContextWrapper
   }
 
 wrapToJS :: RequestContext -> RequestContextWrapper
 wrapToJS t@(ContextWith o) = RequestContextWrapper
-  { requestContext: t
+  {
+    context: o.context
+  , data: o.data
   , map: (\f -> wrapToJS $ map f t)
   , extend: (\f -> wrapToJS $ extend f t)
   }
 
 requestContext :: Context -> Request -> RequestContextWrapper
-requestContext ctx req = wrapToJS $ ContextWith { ctx: mergedCtx, data: mergedReq }
-  where mergedCtx = Record.merge ctx defaultContext
-        mergedReq = Record.merge req A.defaultRequest
+requestContext c r = wrapToJS $ ContextWith { context: mergedCtx, data: mergedReq }
+  where mergedCtx = Record.merge c defaultContext
+        mergedReq = Record.merge r A.defaultRequest
 
 setUri :: A.URL -> RequestContext -> Request
 setUri url (ContextWith o) = o.data { url = url }
 
 get' :: RequestContext -> Effect (Promise Response)
-get' (ContextWith req) = fromAff $ do
-  result <- A.request $ req.data
+get' (ContextWith o) = fromAff $ do
+  result <- A.request o.data
   case result of
     Left err -> throwError $ error $ A.printError err
     Right res -> pure res

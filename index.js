@@ -13,8 +13,8 @@ const debug = s => {
   return s
 }
 
-const boo = reqCtx => {
-  console.log(reqCtx)
+const extend = reqCtx => {
+  console.log('extend:', reqCtx)
   reqCtx.data.url += "?a=a"
   return reqCtx.data
 }
@@ -28,7 +28,7 @@ const boo = reqCtx => {
 
 const p = requestContext(ctx)(req)
   .extend(setUri('https://httpbin.org/get'))
-  .extend(boo)
+  .extend(extend)
   .map(debug)
-  // .extend(get)
-
+  .extend(get)
+  .map(console.log)
