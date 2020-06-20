@@ -11,7 +11,7 @@ import Prelude
 import Affjax as A
 import Data.Either (Either(..))
 import Control.Promise (Promise, fromAff)
-import Control.Extend (class Extend)
+import Control.Extend (class Extend, extend)
 import Effect (Effect)
 import Effect.Aff.Compat (mkEffectFn1)
 import Effect.Uncurried (EffectFn1)
@@ -53,8 +53,8 @@ makeContextWith c x = ContextWith
   {
     context: c
   , data: x
-  , map: (\f -> makeContextWith c (f x))
-  , extend: (\f -> makeContextWith c $ f (makeContextWith c x))
+  , map: (\f -> f <$> makeContextWith c x)
+  , extend: (\f -> extend f $ makeContextWith c x)
   }
 
 makeRequestContext :: Context -> Request -> RequestContext
