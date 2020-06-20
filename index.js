@@ -1,4 +1,4 @@
-const { get, makeRequestContext, setUri } = require('./pure/dist/apickli')
+const { get, makeRequestContext, setUri, setHeader } = require('./pure/dist/apickli')
 
 const ctx = {
   baseUri: 'https://httpbin.org/get'
@@ -14,21 +14,15 @@ const debug = s => {
 }
 
 const extend = reqCtx => {
-  console.log('extend:', reqCtx)
   reqCtx.data.url += "?a=a"
   return reqCtx.data
 }
 
-// Promise.resolve(requestContext(ctx)(req))
-// .then(debug)
-// .then(setUri("!"))
-// .then(debug)
-// .then(get)
-// .then(debug)
-
-const p = makeRequestContext(ctx)(req)
+const requestContext = makeRequestContext(ctx)(req)
   .extend(setUri('https://httpbin.org/get'))
   .extend(extend)
+  .extend(setHeader("damla")("ozan"))
   .map(debug)
-  .extend(get)
-  .map(console.log)
+
+requestContext.extend(get).data
+  .then(console.log, console.log)

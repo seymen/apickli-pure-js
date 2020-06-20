@@ -2,6 +2,7 @@ module Apickli
   ( makeRequestContext
   , ContextWith
   , setUri
+  , setHeader
   , get
   )
   where
@@ -9,6 +10,9 @@ module Apickli
 import Prelude
 
 import Affjax as A
+import Affjax.RequestHeader (RequestHeader(..))
+import Affjax.ResponseFormat (json)
+import Data.Argonaut.Core (Json)
 import Data.Either (Either(..))
 import Control.Promise (Promise, fromAff)
 import Control.Extend (class Extend, extend)
@@ -18,6 +22,7 @@ import Effect.Uncurried (EffectFn1)
 import Effect.Exception (error)
 import Record as Record
 import Effect.Aff (throwError)
+import Data.Array ((:))
 
 type Context =
   { templateChar :: Char
@@ -44,9 +49,12 @@ instance showContextWith :: (Show a) => Show (ContextWith a) where
 instance extendContextWith :: Extend (ContextWith) where
   extend f c@(ContextWith a) = makeContextWith a.context $ f c
 
-type Request = A.Request Unit
-type Response = A.Response Unit
+type Request = A.Request Json
+type Response = A.Response Json
 type RequestContext = ContextWith Request
+
+defaultRequest :: A.Request Json
+defaultRequest  = A.defaultRequest { responseFormat= json }
 
 makeContextWith :: forall a. Context -> a -> ContextWith a
 makeContextWith c x = ContextWith
@@ -60,10 +68,14 @@ makeContextWith c x = ContextWith
 makeRequestContext :: Context -> Request -> RequestContext
 makeRequestContext c r = makeContextWith mergedCtx mergedReq
   where mergedCtx = Record.merge c defaultContext
-        mergedReq = Record.merge r A.defaultRequest
+        mergedReq = Record.merge r defaultRequest
 
 setUri :: A.URL -> RequestContext -> Request
 setUri url (ContextWith o) = o.data { url = url }
+
+setHeader :: String -> String -> RequestContext -> Request
+setHeader name value (ContextWith o) =
+  o.data { headers = (RequestHeader name value) : o.data.headers }
 
 get' :: RequestContext -> Effect (Promise Response)
 get' (ContextWith o) = fromAff $ do
